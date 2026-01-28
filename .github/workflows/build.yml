@@ -1,0 +1,203 @@
+name: Build Mihomo Android SO
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Force rebuild and overwrite release assets (even if this version already exists)"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # UTC 17:00 = 12:00 US Eastern time
+    - cron: "0 17 * * *"
+
+concurrency:
+  group: mihomo-android-so
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.upstream.outputs.tag }}
+      should_build: ${{ steps.check.outputs.should_build }}
+
+    steps:
+      - name: Resolve upstream version
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(gh api repos/MetaCubeX/mihomo/releases/latest --jq '.tag_name')"
+          if [[ -z "${tag}" || "${tag}" == "null" ]]; then
+            echo "Failed to fetch latest MetaCubeX/mihomo tag" >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check whether this version is already released
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.upstream.outputs.tag }}"
+          force_build="${{ github.event.inputs.force_build }}"
+
+          if [[ "${force_build:-}" == "true" ]]; then
+            echo "should_build=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "should_build=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "should_build=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Print decision
+        run: |
+          echo "upstream_tag=${{ steps.upstream.outputs.tag }}"
+          echo "should_build=${{ steps.check.outputs.should_build }}"
+
+      - name: Skip build
+        if: steps.check.outputs.should_build != 'true'
+        run: |
+          echo "Release already exists, skipping build: ${{ steps.upstream.outputs.tag }}"
+
+  build_arm64:
+    needs: resolve
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+          cache: false
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+          link-to-sdk: true
+
+      - name: Prebuild mihomo-source
+        run: |
+          set -euo pipefail
+          python3 prebuild.py --tag "${{ needs.resolve.outputs.tag }}"
+
+      - name: Build arm64-v8a
+        run: |
+          set -euo pipefail
+          python3 build.py --tag "${{ needs.resolve.outputs.tag }}" --arch arm64 --mode release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash_arm64
+          path: dist/libclash_arm64.so
+          if-no-files-found: error
+
+  build_x86_64:
+    needs: resolve
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+          cache: false
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+          link-to-sdk: true
+
+      - name: Prebuild mihomo-source
+        run: |
+          set -euo pipefail
+          python3 prebuild.py --tag "${{ needs.resolve.outputs.tag }}"
+
+      - name: Build x86_64
+        run: |
+          set -euo pipefail
+          python3 build.py --tag "${{ needs.resolve.outputs.tag }}" --arch x86_64 --mode release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libclash_x86_64
+          path: dist/libclash_x86_64.so
+          if-no-files-found: error
+
+  release:
+    needs: [resolve, build_arm64, build_x86_64]
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download arm64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: libclash_arm64
+          path: dist
+
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: libclash_x86_64
+          path: dist
+
+      - name: List release files
+        run: |
+          set -euo pipefail
+          ls -la dist
+
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ needs.resolve.outputs.tag }}"
+
+          title="mihomo android so ${tag}"
+          notes=$(
+            cat <<EOF
+          ## Mihomo Android SO
+
+          Upstream: MetaCubeX/mihomo ${tag}
+
+          Architectures:
+          - arm64-v8a
+          - x86_64
+          EOF
+          )
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" \
+              dist/libclash_arm64.so \
+              dist/libclash_x86_64.so \
+              --clobber
+          else
+            gh release create "${tag}" \
+              dist/libclash_arm64.so \
+              dist/libclash_x86_64.so \
+              --title "${title}" \
+              --notes "${notes}"
+          fi

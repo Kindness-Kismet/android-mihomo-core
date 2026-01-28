@@ -1,0 +1,24 @@
+# Whitelist-mode ignore: ignore everything by default, then re-include tracked sources.
+*
+
+!/.gitignore
+!/README.md
+!/build.py
+!/prebuild.py
+
+!/.github/
+!/.github/workflows/
+!/.github/workflows/build.yml
+
+!/android-wrapper/
+!/android-wrapper/**
+
+# Keep generated files ignored even under whitelisted dirs.
+/android-wrapper/go.sum
+/android-wrapper/go.*.mod
+/android-wrapper/go.*.sum
+/android-wrapper/go.mod.tmp
+
+/dist/
+/mihomo-source/
+__pycache__/
