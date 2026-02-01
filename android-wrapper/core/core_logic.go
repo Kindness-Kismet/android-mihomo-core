@@ -34,6 +34,7 @@ var (
 )
 
 type SetupParams struct {
+	ConfigPath  string            `json:"config-path"`
 	SelectedMap map[string]string `json:"selected-map"`
 	TestURL     string            `json:"test-url"`
 }
@@ -115,6 +116,7 @@ func handleValidateConfig(path string) string {
 }
 
 // handleSetupConfig loads config and applies the proxy selection mapping.
+// If params.ConfigPath is provided, it will be used instead of the default config.yaml.
 func handleSetupConfig(data []byte) string {
 	coreMu.Lock()
 	defer coreMu.Unlock()
@@ -127,7 +129,14 @@ func handleSetupConfig(data []byte) string {
 	if err := json.Unmarshal(data, &params); err != nil {
 		return err.Error()
 	}
-	_ = params // Reserved: proxy selection / delay test config.
+
+	// If a config path is provided, update the global config path
+	if params.ConfigPath != "" {
+		if _, err := os.Stat(params.ConfigPath); err != nil {
+			return "config file not found: " + params.ConfigPath
+		}
+		constant.SetConfig(params.ConfigPath)
+	}
 
 	cfg, err := executor.Parse()
 	if err != nil {
