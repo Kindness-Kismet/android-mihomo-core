@@ -35,6 +35,10 @@ const (
 	GetMemoryMethod                Method = "getMemory"
 	StartLogMethod                 Method = "startLog"
 	StopLogMethod                  Method = "stopLog"
+	StartMemoryMethod              Method = "startMemory"
+	StopMemoryMethod               Method = "stopMemory"
+	StartConnectionsMethod         Method = "startConnections"
+	StopConnectionsMethod          Method = "stopConnections"
 	StartListenerMethod            Method = "startListener"
 	StopListenerMethod             Method = "stopListener"
 	UpdateDnsMethod                Method = "updateDns"
@@ -45,9 +49,11 @@ const (
 type MessageType string
 
 const (
-	LogMessage     MessageType = "log"
-	DelayMessage   MessageType = "delay"
-	RequestMessage MessageType = "request"
+	LogMessage         MessageType = "log"
+	DelayMessage       MessageType = "delay"
+	RequestMessage     MessageType = "request"
+	MemoryMessage      MessageType = "memory"
+	ConnectionsMessage MessageType = "connections"
 )
 
 type Action struct {
@@ -120,6 +126,12 @@ type Service interface {
 
 	StartLog()
 	StopLog()
+
+	StartMemory()
+	StopMemory()
+
+	StartConnections()
+	StopConnections()
 
 	StartListener() bool
 	StopListener() bool

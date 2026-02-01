@@ -166,6 +166,18 @@ func (d *Dispatcher) Dispatch(action contract.Action) DispatchResult {
 	case contract.StopLogMethod:
 		d.Service.StopLog()
 		return success(true)
+	case contract.StartMemoryMethod:
+		d.Service.StartMemory()
+		return success(true)
+	case contract.StopMemoryMethod:
+		d.Service.StopMemory()
+		return success(true)
+	case contract.StartConnectionsMethod:
+		d.Service.StartConnections()
+		return success(true)
+	case contract.StopConnectionsMethod:
+		d.Service.StopConnections()
+		return success(true)
 	case contract.StartListenerMethod:
 		return success(d.Service.StartListener())
 	case contract.StopListenerMethod:

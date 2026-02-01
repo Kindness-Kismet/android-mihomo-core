@@ -171,6 +171,26 @@ func (s *Service) StopLog() {
 	handleStopLog()
 }
 
+// StartMemory delegates to handleStartMemory.
+func (s *Service) StartMemory() {
+	handleStartMemory()
+}
+
+// StopMemory delegates to handleStopMemory.
+func (s *Service) StopMemory() {
+	handleStopMemory()
+}
+
+// StartConnections delegates to handleStartConnections.
+func (s *Service) StartConnections() {
+	handleStartConnections()
+}
+
+// StopConnections delegates to handleStopConnections.
+func (s *Service) StopConnections() {
+	handleStopConnections()
+}
+
 // StartListener delegates to handleStartListener.
 func (s *Service) StartListener() bool {
 	return handleStartListener()
