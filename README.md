@@ -43,6 +43,36 @@ Notes:
 - Response shape is always: `{id, method, data, code}`. `code=0` means success, `code=-1` means error.
 - For the full list of supported `method` values and `data` shapes, check `android-wrapper/contract/contract.go`.
 
+### Method Reference
+
+#### setupConfig
+
+Load and apply configuration. Supports two modes:
+
+**File mode** - load config from file path:
+```json
+{"id":"1","method":"setupConfig","data":{"config-path":"/path/to/config.yaml"}}
+```
+
+**Payload mode** - load config from memory (content string):
+```json
+{"id":"1","method":"setupConfig","data":{"payload":"mixed-port: 7890\nallow-lan: true\n..."}}
+```
+
+Full `data` schema:
+```json
+{
+  "config-path": "string (optional, file path)",
+  "payload": "string (optional, config content)",
+  "selected-map": {"group-name": "proxy-name", ...},
+  "test-url": "string (optional)"
+}
+```
+
+- If `payload` is provided, it takes precedence over `config-path`
+- If neither is provided, reloads the current config file
+- `selected-map` applies proxy selections after config load
+
 ## Threading and Ownership
 
 - Threading: async events (for example logs) call host `result_func` from a background goroutine; callbacks must be thread-safe.

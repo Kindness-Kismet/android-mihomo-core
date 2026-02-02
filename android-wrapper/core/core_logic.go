@@ -35,6 +35,7 @@ var (
 
 type SetupParams struct {
 	ConfigPath  string            `json:"config-path"`
+	Payload     string            `json:"payload"`
 	SelectedMap map[string]string `json:"selected-map"`
 	TestURL     string            `json:"test-url"`
 }
@@ -116,7 +117,9 @@ func handleValidateConfig(path string) string {
 }
 
 // handleSetupConfig loads config and applies the proxy selection mapping.
-// If params.ConfigPath is provided, it will be used instead of the default config.yaml.
+// Supports two modes:
+// 1. File mode: params.ConfigPath specifies the config file path
+// 2. Payload mode: params.Payload contains the config content directly
 func handleSetupConfig(data []byte) string {
 	coreMu.Lock()
 	defer coreMu.Unlock()
@@ -130,17 +133,27 @@ func handleSetupConfig(data []byte) string {
 		return err.Error()
 	}
 
-	// If a config path is provided, update the global config path
-	if params.ConfigPath != "" {
-		if _, err := os.Stat(params.ConfigPath); err != nil {
-			return "config file not found: " + params.ConfigPath
-		}
-		constant.SetConfig(params.ConfigPath)
-	}
+	var cfg *config.Config
+	var err error
 
-	cfg, err := executor.Parse()
-	if err != nil {
-		return err.Error()
+	if params.Payload != "" {
+		// Payload mode: parse config from memory
+		cfg, err = executor.ParseWithBytes([]byte(params.Payload))
+		if err != nil {
+			return err.Error()
+		}
+	} else {
+		// File mode: parse config from file
+		if params.ConfigPath != "" {
+			if _, err := os.Stat(params.ConfigPath); err != nil {
+				return "config file not found: " + params.ConfigPath
+			}
+			constant.SetConfig(params.ConfigPath)
+		}
+		cfg, err = executor.Parse()
+		if err != nil {
+			return err.Error()
+		}
 	}
 
 	// Android provides the VPN fd via startTUN(), so we disable mihomo's built-in TUN.

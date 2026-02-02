@@ -80,11 +80,7 @@ func (d *Dispatcher) Dispatch(action contract.Action) DispatchResult {
 		}
 		return success(d.Service.UpdateConfig(payload))
 	case contract.SetupConfigMethod:
-		payload, err := decodeString(action.Data)
-		if err != nil {
-			return fail("setupConfig: invalid params: " + err.Error())
-		}
-		return success(d.Service.SetupConfig(payload))
+		return success(d.Service.SetupConfig(string(action.Data)))
 	case contract.GetProxiesMethod:
 		return success(d.Service.GetProxies())
 	case contract.ChangeProxyMethod:
