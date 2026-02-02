@@ -55,6 +55,12 @@ jobs:
           tag="${{ steps.upstream.outputs.tag }}"
           force_build="${{ github.event.inputs.force_build }}"
 
+          # Force build on push events
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "should_build=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
           if [[ "${force_build:-}" == "true" ]]; then
             echo "should_build=true" >> "${GITHUB_OUTPUT}"
             exit 0
