@@ -1,6 +1,9 @@
 name: Build Mihomo Android SO
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       force_build:
