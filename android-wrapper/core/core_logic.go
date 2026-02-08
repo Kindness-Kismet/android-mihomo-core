@@ -168,7 +168,29 @@ func handleSetupConfig(data []byte) string {
 
 // handleGetProxies returns the current proxy list (including providers).
 func handleGetProxies() map[string]constant.Proxy {
-	return tunnel.ProxiesWithProviders()
+	return allProxies()
+}
+
+// allProxies merges core proxies with provider proxies.
+// Reason: upstream mihomo removed tunnel.ProxiesWithProviders() in v1.19.20,
+// so we keep one unified path that works across old/new versions.
+func allProxies() map[string]constant.Proxy {
+	all := make(map[string]constant.Proxy)
+	for name, proxy := range tunnel.Proxies() {
+		all[name] = proxy
+	}
+	for _, provider := range tunnel.Providers() {
+		if provider == nil {
+			continue
+		}
+		for _, proxy := range provider.Proxies() {
+			if proxy == nil {
+				continue
+			}
+			all[proxy.Name()] = proxy
+		}
+	}
+	return all
 }
 
 // patchSelectGroup applies host-side selections to SelectAble groups.
@@ -177,7 +199,7 @@ func patchSelectGroup(mapping map[string]string) {
 		return
 	}
 
-	for name, proxy := range tunnel.ProxiesWithProviders() {
+	for name, proxy := range allProxies() {
 		outbound, ok := proxy.(*adapter.Proxy)
 		if !ok {
 			continue
@@ -205,7 +227,7 @@ func handleChangeProxy(params contract.ChangeProxyParams) string {
 		return "missing group-name"
 	}
 
-	proxies := tunnel.ProxiesWithProviders()
+	proxies := allProxies()
 	group, ok := proxies[params.GroupName]
 	if !ok {
 		return "group not found"

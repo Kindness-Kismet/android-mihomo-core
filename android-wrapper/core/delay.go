@@ -9,7 +9,6 @@ import (
 
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/tunnel"
 )
 
 type TestDelayParams struct {
@@ -57,7 +56,7 @@ func handleAsyncTestDelay(paramsString string) string {
 	defer cancel()
 
 	coreMu.Lock()
-	proxy := tunnel.ProxiesWithProviders()[params.ProxyName]
+	proxy := allProxies()[params.ProxyName]
 	coreMu.Unlock()
 
 	if proxy == nil {
